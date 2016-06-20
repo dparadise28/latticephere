@@ -1,0 +1,9 @@
+/src: source for project code
+	server: entry point (spins up server)
+
+	/networking
+		handles: methods that handle endpoints
+		serve: serves the endpoints provided in route with the proper 
+			   handlers provided in handles (methods) provided in 
+		route: maps endpoints to handles
+		
