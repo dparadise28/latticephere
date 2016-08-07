@@ -1,11 +1,11 @@
-//package main
+package main
 
-package tools
+//package tools
 
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
-	"net/http"
+	//"net/http"
 	"strings"
 
 	//"github.com/mailru/easyjson"
@@ -20,18 +20,13 @@ type TransformationTracer struct {
 	*/
 
 	//trackers
-	currentLocation string // path to set of values currently being processed
+	objects    map[string]interface{}   // map of {path: obj} of objects processed to be re-assembled
+	newObjs    []map[string]interface{} // array that keeps track of {path: obj} to objects not yet processed
+	pathToObjs []string                 // array of paths to objects in original dismantled obj
 
-	objects     map[string]interface{}   // array that keeps track of {path: obj} to objects processed
-	newObjs     []map[string]interface{} // array that keeps track of {path: obj} to objects not yet processed
-	moreObjects bool                     // check updated on tracer pass throughs to see if
-	// any more objects have been found and another pass is necissary
-
-	pathToObjs []string // array of paths to objects in original dismantled obj
-
-	arrays     []map[string]interface{} // array that keeps track of {path: ary} to objects not yet processed
-	moreArrays int                      // check updated on tracer pass throughs to see if
-	// any more arrays have been found and another pass is necissary
+	arrays    map[string]interface{} // array that keeps track of {path: ary} to objects not yet processed
+	newArrays []interface{}          // array that keeps track of arrays not yet processed
+	//newArrays []map[string]interface{} // array that keeps track of arrays not yet processed
 
 	//objects
 	preprocessed []byte                 // original data to be remodled
@@ -42,24 +37,17 @@ type TransformationTracer struct {
 
 func dismantleObj(remodler *TransformationTracer) {
 	for len(remodler.newObjs) > 0 {
-		remodler.moreObjects = false
 		for currentIndex := 0; currentIndex < len(remodler.newObjs); currentIndex++ {
 			for key, value := range remodler.newObjs[0] {
 				if key == "-----_PATH_TO_OBJECT_-----" {
 					continue
 				}
 				switch value.(interface{}).(type) {
-				case int:
-					remodler.newObjs[0][key] = value.(int)
-				case bool:
-					remodler.newObjs[0][key] = value.(bool)
-				case float32:
-					remodler.newObjs[0][key] = value.(float32)
-				case float64:
-					remodler.newObjs[0][key] = value.(float64)
 				case string:
-					val, _, _, _ := jsonparser.Get(remodler.preprocessed, strings.Split((value).(string), ".")...)
-					remodler.newObjs[0][key] = string(val)
+					val, _, _, err := jsonparser.Get(remodler.preprocessed, strings.Split((value).(string), ".")...)
+					if err == nil {
+						remodler.newObjs[0][key] = string(val)
+					}
 				case map[string]interface{}:
 					remodler.newObjs = append(remodler.newObjs, value.(map[string]interface{}))
 					if val, ok := remodler.newObjs[0]["-----_PATH_TO_OBJECT_-----"]; ok {
@@ -68,12 +56,13 @@ func dismantleObj(remodler *TransformationTracer) {
 						remodler.newObjs[len(remodler.newObjs)-1]["-----_PATH_TO_OBJECT_-----"] = key
 					}
 					delete(remodler.newObjs[0], key)
-				default:
-					if true {
-						break
-					} else {
-						break
+				case []interface{}:
+					for _, item := range value.([]interface{}) {
+						remodler.newArrays = append(remodler.newArrays, item)
+						generateArray(remodler)
 					}
+				default: // for any values that cant be a path or nested element keep whats set as default and move on
+					continue
 				}
 			}
 			pathToObj := remodler.newObjs[0]["-----_PATH_TO_OBJECT_-----"].(string)
@@ -85,6 +74,28 @@ func dismantleObj(remodler *TransformationTracer) {
 			remodler.newObjs = remodler.newObjs[1:]
 		}
 	}
+}
+
+func generateArray(remodler *TransformationTracer) {
+	for len(remodler.newArrays) > 0 {
+		fmt.Println(remodler.newArrays[0])
+		//jsonparser.ArrayEach(remodler.preprocessed, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		//	fmt.Println(jsonparser.Get(value, "url"))
+		//}, strings.Split((remodler.newArrays[0]).(string), ".")...) //"person", "gravatar", "avatars")
+		remodler.newArrays = remodler.newArrays[1:]
+	}
+	/*for item := range value.([]interface{}) {
+		remodler.newArrays[d] = append(remodler.newArrays, item.(interface{}))
+	}
+
+	switch item.(interface{}).(type) {
+	case map[string]interface{}:
+		remodler.newArrays = append(remodler.newArrays, item.(map[string]interface{}))
+	//dismantleArray(remodler)
+	fmt.Println(item)
+	}
+	*/
+
 }
 
 func reassembleObj(remodler *TransformationTracer) {
@@ -100,20 +111,19 @@ func reassembleObj(remodler *TransformationTracer) {
 	remodler.objects = remodler.objects["~~~~~-----%!%!%Root%!%!%-----~~~~~"].(map[string]interface{})
 }
 
-func Remodel(w http.ResponseWriter, expected []byte, original []byte) {
-	//func Remodel(expected []byte, original []byte) { //[]byte{
+//func Remodel(w http.ResponseWriter, expected []byte, original []byte) {
+func Remodel(expected []byte, original []byte) { //[]byte{
 	expectedJsonItr := jlexer.Lexer{Data: expected}
 
 	//map string interface representation of json input
 	expectedJsonMSI := expectedJsonItr.Interface().(map[string]interface{})
 	remodler := TransformationTracer{
-		"", // path
 		make(map[string]interface{}, 0),   // obj
 		make([]map[string]interface{}, 0), // obj
-		true,                              // obj check
 		make([]string, 0),                 // pathToObjs
-		make([]map[string]interface{}, 0), // arrays
-		0,                            // array check
+		make(map[string]interface{}, 0),   // arrays
+		//make([]map[string]interface{}, 0), // arrays
+		make([]interface{}, 0),
 		original,                     // preprocessed
 		make(map[string]interface{}), // processed
 		"json", // string
@@ -124,15 +134,16 @@ func Remodel(w http.ResponseWriter, expected []byte, original []byte) {
 	remodler.newObjs[0]["-----_PATH_TO_OBJECT_-----"] = "~~~~~-----%!%!%Root%!%!%-----~~~~~"
 	dismantleObj(&remodler)
 	//printJ(remodler.objects)
+	printI(remodler.newArrays)
 	reassembleObj(&remodler)
-	//printJ(remodler.objects)
+	printJ(remodler.objects)
 
-	buf, _ := ffjson.Marshal(&remodler.objects) //&expectedJsonMSI)
+	//buf, _ := ffjson.Marshal(&remodler.objects) //&expectedJsonMSI)
 	//return buf
 	//return expectedJsonMSI
 	//fmt.Println(remodler.pathToObjs)
 
-	fmt.Fprintf(w, string(buf))
+	//fmt.Fprintf(w, string(buf))
 	//fmt.Println(string(buf))
 }
 
@@ -141,9 +152,19 @@ func printJ(JsonMSI map[string]interface{}) {
 	fmt.Println(string(buf))
 }
 
-func RemodelJ(w http.ResponseWriter, r *http.Request) {
-	//func main() {
+func printI(JsonMSI interface{}) {
+	buf, _ := ffjson.Marshal(&JsonMSI)
+	fmt.Println(string(buf))
+}
+
+//func RemodelJ(w http.ResponseWriter, r *http.Request) {
+func main() {
 	a := []byte(`{
+		"a": 1,
+		"b": 1.333,
+		"e": true,
+		"c": false,
+		"d": "success",
 		"values": [{
 			"bool": "path.to.bool",
 			"float": "path.to.float",
@@ -357,7 +378,17 @@ func RemodelJ(w http.ResponseWriter, r *http.Request) {
             }
           }
         }`)
-	Remodel(w, a, in)
-	//Remodel(a, in)
+	/*a = []byte(`{
+	  "array": [{
+		"########ORIGINAL_PATH_TO_ARRAY########": "path.to.array",
+		"string": "string",
+		"float": "float",
+		"bool": "bool",
+		"int": "int"
+	  }]
+	}`)*/
+
+	//Remodel(w, a, in)
+	Remodel(a, in)
 	//return ""
 }
