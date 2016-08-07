@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"html"
+	"tools"
 	"net/http"
 	"networking"
-    "golang.org/x/net/http2"
+	"golang.org/x/net/http2"
 )
 
 func ShowRequestInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,21 +28,24 @@ func ShowRequestInfoHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	var srv http.Server
 	http2.VerboseLogs = true
-	srv.Addr = ":8080"
+	srv.Addr = ":8000"
 
 	// This enables http2 support
 	http2.ConfigureServer(&srv, nil)
-	
+
 	networking.ServerEndPoints()
-    http.HandleFunc("/a", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "Hi tester %q\n", html.EscapeString(r.URL.Path))
-        ShowRequestInfoHandler(w, r)
-    })
+	http.HandleFunc("/a", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(w, "Hi tester %q\n", html.EscapeString(r.URL.Path))
+		ShowRequestInfoHandler(w, r)
+	})
+
+	http.HandleFunc("/ggg", tools.RemodelJ)
 
 	// Listen as https ssl server
 	// NOTE: WITHOUT SSL IT WONT WORK!!
 	// To self generate a test ssl cert/key you could go to
 	// http://www.selfsignedcertificate.com/
 	// or read the openssl manual
+	//log.Fatal(srv.ListenAndServe())
 	log.Fatal(srv.ListenAndServeTLS("cert.pem", "key.pem"))
 }

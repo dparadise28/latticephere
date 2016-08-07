@@ -8,7 +8,7 @@ import (
 )
 
 func handler(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, r.URL.Path)
+	//fmt.Fprintf(w, r.URL.Path)
 	RouteMap()[r.URL.Path](w, r)
 }
 
