@@ -2,14 +2,19 @@ package networking
 
 import (
 	"net/http"
+	"tools"
 )
 
-//create type for consistent function signatures in routing map
-type fn func (http.ResponseWriter, *http.Request)
+//container for api methods
+type API struct{}
 
-func RouteMap()(map[string]fn){
-	return map[string] fn {
-		"/"  : CheckPath, 
-		"/h2": ShowRequestInfoHandler,
+//create type for consistent function signatures in routing map
+type fn func(http.ResponseWriter, *http.Request)
+
+func RouteMap() map[string]fn {
+	return map[string]fn{
+		"/":          CheckPath,
+		"/h2":        ShowRequestInfoHandler,
+		"/transform": tools.RemodelJ,
 	}
 }
