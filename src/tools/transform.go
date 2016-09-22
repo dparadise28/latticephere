@@ -3,6 +3,7 @@
 package tools
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -115,11 +116,9 @@ func reassembleObj(remodler *TransformationTracer) {
 	remodler.objects = remodler.objects["~~~~~-----%!%!%Root%!%!%-----~~~~~"].(map[string]interface{})
 }
 
-func Remodel(w http.ResponseWriter, expected []byte, original []byte) {
-	//func Remodel(expected []byte, original []byte) { //[]byte{
-	expectedJsonItr := jlexer.Lexer{Data: expected}
-
+func Remodel(expected []byte, original []byte, action []byte) TransformationTracer {
 	//map string interface representation of json input
+	expectedJsonItr := jlexer.Lexer{Data: expected}
 	expectedJsonMSI := expectedJsonItr.Interface().(map[string]interface{})
 	remodler := TransformationTracer{
 		make(map[string]interface{}, 0),   // obj
@@ -136,10 +135,11 @@ func Remodel(w http.ResponseWriter, expected []byte, original []byte) {
 	remodler.newObjs = append(remodler.newObjs, expectedJsonMSI)
 	remodler.newObjs[0]["-----_PATH_TO_OBJECT_-----"] = "~~~~~-----%!%!%Root%!%!%-----~~~~~"
 	dismantleObj(&remodler)
+	if bytes.Equal(action, []byte(`dismantle`)) {
+		return remodler
+	}
 	reassembleObj(&remodler)
-
-	buf, _ := ffjson.Marshal(&remodler.objects) //&expectedJsonMSI)
-	fmt.Fprintf(w, string(buf))
+	return remodler
 }
 
 func printJ(JsonMSI map[string]interface{}) {
@@ -160,6 +160,7 @@ func RemodelJ(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("could not read request body")
 	} else {
 		inputs := map[string][]byte{
+			"action":             []byte(``),
 			"response_structure": []byte(``),
 			"original_structure": []byte(``),
 		}
@@ -170,6 +171,9 @@ func RemodelJ(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		Remodel(w, inputs["response_structure"], inputs["original_structure"])
+		remodler := Remodel(inputs["response_structure"], inputs["original_structure"], inputs["action"])
+		buf, _ := ffjson.Marshal(&remodler.objects) //&expectedJsonMSI)
+		fmt.Println(string(buf))
+		fmt.Fprintf(w, string(buf))
 	}
 }
