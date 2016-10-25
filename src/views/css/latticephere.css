@@ -63,7 +63,7 @@ header .intro-text .button-create-user{
             border-radius: 8px;
     }
 header .intro-text {
-  background: rgba(0, 15, 10, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   justify-content: center;
   align-items: center;
   width: 100%;
@@ -92,6 +92,13 @@ header .intro-text .intro-heading {
 
 section {
   padding: 100px 0;
+}
+section#contact {
+  background-color: #222222;
+  color: white;
+  background-image: url('../img/map-image.png');
+  background-position: center;
+  background-repeat: no-repeat;
 }
 section h2.section-heading {
   font-size: 40px;
