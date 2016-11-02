@@ -1,0 +1,56 @@
+{
+	"notes":"this is a static file you can update, remove and manipulate like all others",
+	"api": {
+		"ip": "74.101.101.65",
+		"port": "8000",
+		"todos": [
+			"user creation/deletion and all things associated with permissions",
+			"the rest is yet to determined (many possibilities; priorities need to be set)"
+		],
+		"current_users": [
+			"eman"
+		],
+
+		"retrieve": {
+			"description": "used to retrieve data being hosted for a particular user",
+			"schema": "static/confs/<user>/<file_name>",
+			"full": "ip:port/schema",
+			"args": {
+				"get": {},
+				"post": {}
+			}
+		},
+
+		"add": {
+			"description": "used to add data to be hosted for a particular user",
+			"schema": "static/confs/<user>/<file_name>/add",
+			"full": "ip:port/schema",
+			"args": {
+				"get": {},
+				"post": {
+					"format": "schemaless (freeform)"
+				}
+			}
+		},
+
+		"delete": {
+			"description": "used to delete information to be hosted for a particular user",
+			"schema": "static/confs/<user>/<file_name>/delete",
+			"full": "ip:port/schema",
+			"args": {
+				"get": {},
+				"post": {}
+			}
+		},
+
+		"list": {
+			"description": "used to list all files being hosted for a particular user",
+			"schema": "static/confs/<user>/list",
+			"full": "ip:port/schema",
+			"args": {
+				"get": {},
+				"post": {}
+			}
+		}
+	}
+}
